@@ -7,7 +7,11 @@ const flash = require("connect-flash");
 
 const ExpressError = require("./utils/ExpressError");
 const methodOverride = require("method-override");
+const passport = require("passport");
+const LocalStrategy = require("passport-local");
+const User = require("./models/user");
 
+const userRoutes = require("./routes/users");
 const campgroundRoutes = require("./routes/campgrounds");
 const reviewRoutes = require("./routes/reviews");
 
@@ -46,9 +50,18 @@ const sessionConfig = {
   },
 };
 app.use(session(sessionConfig));
+
+app.use(passport.initialize());
+app.use(passport.session());
+passport.use(new LocalStrategy(User.authenticate()));
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
+
 app.use(flash());
 
 app.use((req, res, next) => {
+  console.log(req.session);
+  res.locals.currentUser = req.user;
   res.locals.success = req.flash("success");
   res.locals.error = req.flash("error");
   next();
@@ -58,6 +71,13 @@ app.get("/", (req, res) => {
   res.render("home");
 });
 
+app.get("/fake", async (req, res) => {
+  const user = new User({ email: "hogehoge@moge", username: "taku" });
+  const newUser = await User.register(user, "mogemoge");
+  res.send(newUser);
+});
+
+app.use("/", userRoutes);
 app.use("/campgrounds", campgroundRoutes);
 app.use("/campgrounds/:id/reviews", reviewRoutes);
 
